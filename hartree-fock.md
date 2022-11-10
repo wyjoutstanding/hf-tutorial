@@ -1,4 +1,6 @@
 
+[toc]
+
 # 电子哈密顿量
 ## 总哈密顿量
 分子体系的总哈密顿量表示为
@@ -98,6 +100,7 @@ $$
 $$
 
 # 编程实现
+先进行HF方程的正则化，再变换为容易被计算机求解的矩阵形式。主要是为了展示推导的思路，具体实现时考虑了轨道自旋情况，最终Fock算符和能量表达式的系数会有所变化。
 
 ## 正则HF方程
 
@@ -140,6 +143,67 @@ $$
 
 对角化方程转换
 
+
+## 推广到具体的自旋轨道
+> 对应的编程实现是推广到了自旋轨道，其中Fock算符，能量最终表达式需要重新推导，推导时需要加上自旋，然后先通过积分消去自旋，其后思路和前文提到的一般形式推导一样。具体
+
+考虑自旋时的方程推导，总体思路是先消去自旋部分，再积分消掉空间部分，进行后续推导。
+自旋轨道拆分为两个部分，空间坐标 $\varphi$ 和自旋部分 $\alpha,\beta$。
+$$
+\phi_i(x) = \begin{cases}
+    \varphi_j(r) \alpha(w)\\
+    \varphi_j(r) \beta(w)
+\end{cases}
+$$
+我们从正则HF方程开始做自旋轨道的推广，先假设时自旋为 $\alpha$（$\beta$ 结果也一样）：
+
+$$
+f(x_1) \phi_i(x_1) = \epsilon_i \phi_i(x_1)\\
+f(x_1) \varphi_j(r_1)\alpha(w_1) = \epsilon_i \varphi_i(r_1)\alpha(w_1)
+$$
+通过积分消除自旋，即左乘 $\alpha(w_1)$ 并两边积分，同时利用自旋的正交归一性化简等式右侧：
+$$
+    \int \alpha^*(w_1) f(x_1) \varphi_j(r_1)\alpha(w_1) dw_1 = \int \alpha_i(w_1) \epsilon_i \varphi_i(r_1)\alpha(w_1) dw \\
+    \int \alpha^*(w_1) f(x_1) \varphi_j(r_1)\alpha(w_1) dw_1 =  \epsilon_i \varphi_i(r_1)
+$$
+<!-- 此处将 $\phi_i$ 看成自旋轨道，带入方程为： -->
+
+将Fock算符具体形式展开，得到下式：
+
+$$
+    \Big[\int \alpha^*(w_1) f(x_1) \alpha(w_1) dw_1\Big] \varphi_j(r_1) = \Big[\int \alpha^*(w_1) h(r_1) \alpha(w_1) dw_1\Big]\varphi_j(r_1) 
+    \\+ \Big[\sum_c \int \alpha^*(w_1) \phi^*_c(x_2) r_{12}^{-1} \phi_c(x_2) \alpha(w_1) dw_1dx_2\Big] \varphi_j(r_1) 
+    \\- \Big[\sum_c \int \alpha^*(w_1) \phi^*_c(x_2) r_{12}^{-1} \phi_c(x_1) \alpha(w_2) dw_1dx_2\Big] \varphi_j(r_2) 
+$$
+
+由于闭壳层中自旋向上和向下的轨道数目相等，因此可以将上式中所有的自旋轨道都拆分为2部分，并利用正交归一性进行化简：
+$$
+\begin{aligned}
+    \Big[\int \alpha^*(w_1) f(x_1) \alpha(w_1) dw_1\Big] \varphi_j(r_1) =& h(r_1) \varphi_j(r_1) 
+    \\&+ \Big[\sum_c^{N/2} \int \alpha^*(w_1) \varphi_c^*(r_2)\alpha^*(w_2) r_{12}^{-1} \varphi_c(r_2)\alpha(w_2) \alpha(w_1) dw_1dw_2dr_2\Big] \varphi_j(r_1) 
+    \\&+ \Big[\sum_c^{N/2} \int \alpha^*(w_1) \varphi_c^*(r_2)\beta^*(w_2) r_{12}^{-1} \varphi_c(r_2)\beta(w_2) \alpha(w_1) dw_1dw_2dr_2\Big] \varphi_j(r_1) 
+    \\&- \Big[\sum_c^{N/2} \int \alpha^*(w_1) \varphi_c^*(r_2)\alpha^*(w_2) r_{12}^{-1} \varphi_c(r_1)\alpha(w_1) \alpha(w_2) dw_1dw_2dr_2\Big] \varphi_j(r_2) 
+    \\&- \Big[\sum_c^{N/2} \int \alpha^*(w_1) \varphi_c^*(r_2)\beta^*(w_2) r_{12}^{-1} \varphi_c(r_1)\beta(w_1) \alpha(w_2) dw_1dw_2dr_2\Big] \varphi_j(r_2) 
+    \\=&\quad h(r_1) \varphi_j(r_1) 
+    + 2\Big[\sum_c^{N/2} \int \varphi_c^*(r_2) r_{12}^{-1} \varphi_c(r_2)dr_2\Big] \varphi_j(r_1) 
+    \\&- \Big[\sum_c^{N/2} \int \varphi_c^*(r_2) r_{12}^{-1} \varphi_c(r_1)dr_2\Big] \varphi_j(r_2) 
+\end{aligned}
+$$
+令 $f(r_1) \equiv \int \alpha^*(w_1) f(x_1) \alpha(w_1) dw_1$（对 $w_1$ 全空间积分，所以只和 $r_1$ 相关），并且 $\epsilon_i$ 为自旋轨道的能量，与对应空间轨道能量相同，因此上式等价于：
+$$
+f(r_1)\varphi_j(r_1) = \epsilon_j \varphi_j(r_1)
+$$
+同时可以发现，可以定义和前面通用的库伦 $\hat J$ 和交换算符 $\hat K$，他们形式基本一致，只不过此处将自旋轨道换成空间轨道。因此闭壳层的 Fock算符形式为：
+$$
+    f(r_1) = h(r_1) + 2\hat J_a - \hat K_a\\
+    \hat J_a \varphi_j(r_1) = \sum_c^{N/2} \int \varphi_c^*(r_2) r_{12}^{-1} \varphi_c(r_2)dr_2 \varphi_j(r_1)\\
+    \hat K_a \varphi_j(r_1) = \sum_c^{N/2} \int \varphi_c^*(r_2) r_{12}^{-1} \varphi_j(r_2)dr_2 \varphi_j(r_1)
+$$
+
+已知Fock算符形式，很容易推导出 $F_{uv} = \langle \chi_u| \hat f | \chi_v \rangle=h_{uv}+\sum_{\alpha\beta}D_{\alpha\beta}[2\langle \alpha u|\beta v\rangle -\langle \alpha u|v\beta\rangle]$，其中密度矩阵 $D_{uv}=\sum_iC_{ui}^*C_{vi}$，此处也是库伦势能前多了系数2，本质是由Fock算符影响的。
+
+同理，将自旋表达式带入通用能量表达式，并用原子基组展开，就能得到RHF下的能量具体表达式。
+
 # References
 对于量子化学初学者（原计算机选手，数学基础仅有高数，线代，概率论，离散数学）想要快速入门理解，我采用的路线是忽略大量的基础数学知识（一开始就看这个很容易觉得无聊从而放弃，别问我咋知道的），直接看hartree-fock的推导视频，在看视频中将不懂得基础概念和数学方法粗略了解下（先掌握脉络，后面再深入），然后跟着推公式，自己整理笔记，发现不通畅时回去看视频或者看书/文章，解决一个个的问题。最后是将公式转换为代码，来检验自己的推导是否正确，是否真的理解学习内容。
 
@@ -152,7 +216,7 @@ $$
 
 [从Hartree-Fock方程推导Roothaan方程](https://www.bilibili.com/video/BV1u14y157Af/?share_source=copy_web&vd_source=8f1a8bf0da41ecd44f5ab605e6f4e43b)：白板推导，包括了自旋部分，能得到严格的RHF的求解公式
 
-《Modern quantum chemistry introduction to advanced electronic structure theory》 Attila Szabo，适合入门观看，HF部分教你实现Hartree-Fock代码
+《Modern quantum chemistry introduction to advanced electronic structure theory》 Attila Szabo，适合入门观看，HF部分教你实现Hartree-Fock代码，大多数的网络资料均来源于此，包括本文
 
 《量子化学中册》徐光宪，非常详实，想了解数学和技术细节的冲他，但初学最好和Szabo，上面推荐的视频一块食用
 
