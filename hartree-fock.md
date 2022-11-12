@@ -1,6 +1,5 @@
 ---
-
-puppeteer
+puppeteer:
   landscape: true
   format: "A4"
   timeout: 3000 # <= Special config, which means waitFor 3000 ms
